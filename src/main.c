@@ -174,7 +174,9 @@ static void plugin_task(void* args) {
 }
 
 static void main_task(void* args) {
-    // console_ready();
+    // The USB console task was disabled upstream, so nothing sent over USB (TS-code motor
+    // commands, console commands) was ever read. Start it.
+    console_ready();
     ui_open_page(&PAGE_EDGING_STATS, NULL);
     ui_reset_idle_timer();
     orgasm_control_set_output_mode(OC_MANUAL_CONTROL);
