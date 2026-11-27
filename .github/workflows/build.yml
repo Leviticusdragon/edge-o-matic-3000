@@ -60,7 +60,7 @@ jobs:
           git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
           git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
           if git fetch -q --depth 1 origin firmware-builds; then git checkout -q -b firmware-builds FETCH_HEAD; else git checkout -q --orphan firmware-builds; fi
-          cp /tmp/out/* .
+          cp /tmp/out/*.bin /tmp/out/*.sha256 .
           git add -A && git commit -qm "firmware $BR $SHA" && git push -q origin HEAD:firmware-builds
 
       - name: Upload firmware artifact
