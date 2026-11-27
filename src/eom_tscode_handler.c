@@ -1,6 +1,7 @@
 #include "eom_tscode_handler.h"
 #include "eom-hal.h"
 #include "orgasm_control.h"
+#include "system/remote_failsafe.h"
 #include "tscode_capabilities.h"
 #include "ui/toast.h"
 #include "version.h"
@@ -30,6 +31,7 @@ eom_tscode_handler(tscode_command_t* cmd, char* response, size_t resp_len) {
 
             orgasm_control_set_output_mode(OC_MANUAL_CONTROL);
             eom_hal_set_motor_speed(value);
+            remote_failsafe_note(value);
         }
         break;
     }
@@ -39,6 +41,7 @@ eom_tscode_handler(tscode_command_t* cmd, char* response, size_t resp_len) {
     case TSCODE_VIBRATE_OFF: {
         orgasm_control_set_output_mode(OC_MANUAL_CONTROL);
         eom_hal_set_motor_speed(0);
+        remote_failsafe_note(0);
         break;
     }
 

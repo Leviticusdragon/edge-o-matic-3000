@@ -14,6 +14,7 @@
 #include "system/action_manager.h"
 #include "system/event_manager.h"
 #include "system/http_server.h"
+#include "system/remote_failsafe.h"
 #include "ui/toast.h"
 #include "ui/ui.h"
 #include "util/i18n.h"
@@ -252,6 +253,7 @@ void app_main() {
     wifi_manager_init();
     plugin_driver_init();
     orgasm_control_init();
+    remote_failsafe_init();
     i18n_init();
 
     // Initialize accessory bus and action system

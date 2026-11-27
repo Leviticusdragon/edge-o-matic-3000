@@ -48,10 +48,6 @@ static httpd_handle_t start_webserver(void) {
     // the app's reconnect.
     config.lru_purge_enable = true;
 
-    // Broadcasts are sent synchronously from the main loop; a stalled socket used to block
-    // it for the 5 s default. Fail faster and let the failed client be closed.
-    config.send_wait_timeout = 2;
-
     // Open/Close callbacks
     config.open_fn = websocket_open_fd;
     config.close_fn = websocket_close_fd;

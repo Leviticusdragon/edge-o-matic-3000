@@ -2,6 +2,7 @@
 #include "eom-hal.h"
 #include "esp_log.h"
 #include "orgasm_control.h"
+#include "system/remote_failsafe.h"
 #include "system/websocket_handler.h"
 
 static const char* TAG = "api/edging";
@@ -44,7 +45,10 @@ cmd_edging_set_motor(cJSON* command, cJSON* response, websocket_client_t* client
         cJSON_AddStringToObject(response, "mode", orgasm_control_get_output_mode_str());
     }
 
+    if (speed < 0) speed = 0;
+    if (speed > 255) speed = 255;
     eom_hal_set_motor_speed(speed);
+    remote_failsafe_note((uint8_t)speed);
     cJSON_AddNumberToObject(response, "speed", speed);
     return CMD_OK;
 }

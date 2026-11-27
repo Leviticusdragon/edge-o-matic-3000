@@ -30,6 +30,18 @@ void running_average_add_value(running_average_t* ra, uint16_t value) {
     if (ra == NULL || ra->buffer == NULL)
         return;
 
+    if (!ra->primed) {
+        // Fill the whole window with the first real sample. Starting from zeros made the
+        // first readings after every boot ramp up from ~1/window of the real pressure, which
+        // the app read as a huge pressure surge (pinned arousal at the start of a session).
+        for (size_t i = 0; i < ra->window; i++) ra->buffer[i] = value;
+        ra->sum = (uint32_t)value * ra->window;
+        ra->index = 0;
+        ra->averaged = value;
+        ra->primed = 1;
+        return;
+    }
+
     ra->sum -= ra->buffer[ra->index];
     ra->buffer[ra->index] = value;
     ra->sum = ra->sum + value;

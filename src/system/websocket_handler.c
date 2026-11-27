@@ -47,12 +47,6 @@ esp_err_t websocket_broadcast(cJSON* root, int broadcast_flags) {
                 ESP_LOGW(
                     TAG, "Broadcast send failed for fd %d: %s", client->fd, esp_err_to_name(err)
                 );
-                // A failed/timed-out send means the peer is gone or stalled. Ask the server
-                // to close the session (asynchronous; close_fn removes it from the list later)
-                // so it does not keep blocking the main loop or occupying a socket slot.
-                if (err != ESP_ERR_HTTPD_INVALID_REQ) {
-                    httpd_sess_trigger_close(client->server, client->fd);
-                }
             }
         }
     }

@@ -15,6 +15,7 @@ typedef struct running_average {
     uint16_t value;
     uint32_t sum; // 32-bit: window * 4095 overflows 16 bits for windows > 16
     uint16_t averaged;
+    uint8_t primed; // set once the window has been filled with the first sample
 } running_average_t;
 
 void running_average_init(running_average_t** ra, size_t window_size);

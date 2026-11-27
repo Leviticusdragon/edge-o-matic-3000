@@ -76,8 +76,49 @@ static void register_help(void) {
     console_register_command(&cmd_help_s);
 }
 
+// Machine mode: the USB port is used by a program (classic_serial streams data rows), not by
+// a person at a terminal. Lines are read without echo or prompt, so nothing the program sends
+// gets spliced into the middle of a data row, and the start-up terminal probe (which swallows
+// whatever arrives in its 200 ms window) is skipped.
+static bool console_machine_mode(void) {
+    return Config.classic_serial;
+}
+
+static char* console_read_line_silent(void) {
+    char buf[256];
+    size_t n = 0;
+
+    for (;;) {
+        int c = fgetc(stdin);
+        if (c == EOF) {
+            clearerr(stdin);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+        if (c == '\r' || c == '\n') {
+            if (n == 0) continue; // ignore empty lines / the LF of a CRLF pair
+            buf[n] = '\0';
+            return strdup(buf);
+        }
+        if (n < sizeof(buf) - 1) buf[n++] = (char)c;
+    }
+}
+
+static void console_trim(char* line) {
+    size_t len = strlen(line);
+    while (len > 0 && isspace((unsigned char)line[len - 1])) line[--len] = '\0';
+    size_t start = 0;
+    while (line[start] != '\0' && isspace((unsigned char)line[start])) start++;
+    if (start > 0) memmove(line, line + start, len - start + 1);
+}
+
+// A TS-code motor/query line ("S03 BV120", "S05", "S115", ...)
+static bool console_is_tscode_line(const char* line) {
+    return (line[0] == 'S' || line[0] == 's') && isdigit((unsigned char)line[1]);
+}
+
 static void reinitialize_console(void) {
-    if (_tscode_mode || Config.console_basic_mode) {
+    if (_tscode_mode || Config.console_basic_mode || console_machine_mode()) {
         linenoiseSetDumbMode(true);
         linenoiseAllowEmpty(false);
         linenoiseSetMultiLine(false);
@@ -135,7 +176,9 @@ static void console_task(void* args) {
         char* line = NULL;
 
         // TScode does not use a prompt:
-        if (_tscode_mode) {
+        if (console_machine_mode()) {
+            line = console_read_line_silent();
+        } else if (_tscode_mode) {
             line = linenoise("");
         } else {
             snprintf(prompt, PATH_MAX + 7, PROMPT, uart_console.cwd);
@@ -146,16 +189,30 @@ static void console_task(void* args) {
             continue;
         }
 
+        console_trim(line);
+
         if (strcasecmp(line, "tscode") == 0) {
             _tscode_mode = true;
             reinitialize_console();
+            if (console_machine_mode()) {
+                // Acknowledge the mode switch explicitly so a program knows TS-code is active.
+                printf("OK\n");
+                linenoiseFree(line);
+                continue;
+            }
         }
 
         if (line[0] != '\0') {
-            if (_tscode_mode) {
+            // In machine mode a TS-code line is always handled as TS-code, even if the
+            // "tscode" switch line was lost (e.g. sent while the EOM was still booting).
+            if (_tscode_mode || (console_machine_mode() && console_is_tscode_line(line))) {
                 char out[256] = { 0 };
                 tscode_process_buffer(line, &tscode_handler, out, 256);
                 printf("%s\n", out);
+            } else if (console_machine_mode()) {
+                char* argv[ARGV_MAX] = { 0 };
+                int argc = esp_console_split_argv(line, argv, ARGV_MAX);
+                console_run_command(argc, argv, &uart_console);
             } else {
                 linenoiseHistoryAdd(line);
 
