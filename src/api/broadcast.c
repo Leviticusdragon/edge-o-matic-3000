@@ -1,3 +1,4 @@
+#include "wifi_manager.h"
 #include "api/broadcast.h"
 #include "cJSON.h"
 #include "config_defs.h"
@@ -58,10 +59,11 @@ void api_broadcast_network_status(void) {
     cJSON* payload = cJSON_CreateObject();
     cJSON* root = cJSON_AddObjectToObject(payload, "wifiStatus");
 
-    // TODO: Actually get this from active connection
     cJSON_AddStringToObject(root, "ssid", Config.wifi_ssid);
-    cJSON_AddStringToObject(root, "ip", "");
-    cJSON_AddNumberToObject(root, "rssi", -1);
+    cJSON_AddStringToObject(root, "ip", wifi_manager_get_local_ip());
+    // Real signal strength in dBm (0 if not associated). Roughly: > -60 good,
+    // -60..-70 fair, < -75 poor for a small ESP32 antenna.
+    cJSON_AddNumberToObject(root, "rssi", wifi_manager_get_rssi());
 
     websocket_broadcast(payload, WS_BROADCAST_SYSTEM);
     cJSON_Delete(payload);

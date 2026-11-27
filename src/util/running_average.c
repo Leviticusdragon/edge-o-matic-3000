@@ -5,13 +5,25 @@ void running_average_init(running_average_t** ra, size_t window_size) {
     if (ra == NULL || window_size == 0)
         return;
 
-    running_average_t* init = (running_average_t*)malloc(sizeof(running_average_t));
+    // calloc so index, sum and the sample buffer all start at zero.
+    running_average_t* init = (running_average_t*)calloc(1, sizeof(running_average_t));
 
     if (init == NULL)
         return;
 
-    init->buffer = (uint16_t*)malloc(sizeof(uint16_t) * window_size);
+    init->buffer = (uint16_t*)calloc(window_size, sizeof(uint16_t));
+
+    if (init->buffer == NULL) {
+        free(init);
+        return;
+    }
+
     init->window = window_size;
+
+    // Previously the allocated struct was never handed back to the caller, so the
+    // average stayed NULL and every average-pressure reading (USB serial rows, SD
+    // logs, get_pressure_average) was always 0.
+    *ra = init;
 }
 
 void running_average_add_value(running_average_t* ra, uint16_t value) {
@@ -22,7 +34,7 @@ void running_average_add_value(running_average_t* ra, uint16_t value) {
     ra->buffer[ra->index] = value;
     ra->sum = ra->sum + value;
     ra->index = (ra->index + 1) % ra->window;
-    ra->averaged = ra->sum / ra->window;
+    ra->averaged = (uint16_t)(ra->sum / ra->window);
 }
 
 uint16_t running_avergae_get_average(running_average_t* ra) {

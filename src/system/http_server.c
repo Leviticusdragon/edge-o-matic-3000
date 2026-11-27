@@ -43,6 +43,15 @@ static httpd_handle_t start_webserver(void) {
 
     config.max_open_sockets = 3;
 
+    // When all sockets are taken (e.g. by "zombie" connections left behind by a Wi-Fi drop
+    // that the client never closed), close the least-recently-used one instead of refusing
+    // the app's reconnect.
+    config.lru_purge_enable = true;
+
+    // Broadcasts are sent synchronously from the main loop; a stalled socket used to block
+    // it for the 5 s default. Fail faster and let the failed client be closed.
+    config.send_wait_timeout = 2;
+
     // Open/Close callbacks
     config.open_fn = websocket_open_fd;
     config.close_fn = websocket_close_fd;
@@ -120,44 +129,32 @@ static void stop_webserver(httpd_handle_t server) {
     httpd_stop(server);
 }
 
-static void
-connect_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-    httpd_handle_t* server = (httpd_handle_t*)arg;
-    if (*server == NULL) {
-        ESP_LOGI(TAG, "Starting webserver...");
-        *server = start_webserver();
-    }
-}
-
-static void
-disconnect_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-    httpd_handle_t* server = (httpd_handle_t*)arg;
-    if (*server) {
-        ESP_LOGI(TAG, "Stopping webserver...");
-        stop_webserver(*server);
-        *server = NULL;
-    }
-}
-
 esp_err_t http_server_init(void) {
-    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &_server);
-    esp_event_handler_register(
-        WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &_server
-    );
-
+    // The server is started by wifi_manager on IP_EVENT_STA_GOT_IP (and from connect_to_ap).
+    // It is deliberately NOT stopped on a Wi-Fi drop: its listening socket is bound to any
+    // address and survives a reconnect, and restarting it would kill every client session.
+    // (The old GOT_IP/DISCONNECTED handlers here were registered before the default event
+    // loop existed, so they never actually ran.)
     api_register_all();
     return ESP_OK;
 }
 
 esp_err_t http_server_connect(void) {
-    _server = start_webserver();
-    if (_server == NULL) {
+    if (_server != NULL) {
+        return ESP_OK; // already running
+    }
+
+    ESP_LOGI(TAG, "Starting webserver...");
+    httpd_handle_t server = start_webserver();
+    if (server == NULL) {
         return ESP_FAIL;
     }
+    _server = server;
     return ESP_OK;
 }
 
 void http_server_disconnect(void) {
+    if (_server == NULL) return;
     stop_webserver(_server);
     _server = NULL;
 }

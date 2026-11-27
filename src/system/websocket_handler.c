@@ -47,6 +47,12 @@ esp_err_t websocket_broadcast(cJSON* root, int broadcast_flags) {
                 ESP_LOGW(
                     TAG, "Broadcast send failed for fd %d: %s", client->fd, esp_err_to_name(err)
                 );
+                // A failed/timed-out send means the peer is gone or stalled. Ask the server
+                // to close the session (asynchronous; close_fn removes it from the list later)
+                // so it does not keep blocking the main loop or occupying a socket slot.
+                if (err != ESP_ERR_HTTPD_INVALID_REQ) {
+                    httpd_sess_trigger_close(client->server, client->fd);
+                }
             }
         }
     }
@@ -210,7 +216,16 @@ esp_err_t websocket_handler(httpd_req_t* req) {
     if (ws_pkt.type == HTTPD_WS_TYPE_CLOSE) {
         ESP_LOGI(TAG, "Client requesting CLOSE");
     } else if (ws_pkt.type == HTTPD_WS_TYPE_PING) {
-        ESP_LOGI(TAG, "Received PING message");
+        // handle_ws_control_frames is enabled for this route, so the server does not answer
+        // pings itself. Reply with a PONG carrying the same payload (RFC 6455 5.5.3).
+        ESP_LOGD(TAG, "Received PING message, sending PONG");
+        httpd_ws_frame_t pong;
+        memset(&pong, 0, sizeof(httpd_ws_frame_t));
+        pong.type = HTTPD_WS_TYPE_PONG;
+        pong.final = true;
+        pong.payload = ws_pkt.payload;
+        pong.len = ws_pkt.len;
+        ret = httpd_ws_send_frame(req, &pong);
     } else if (ws_pkt.type == HTTPD_WS_TYPE_PONG) {
         ESP_LOGI(TAG, "Received PONG message");
     } else if (ws_pkt.type == HTTPD_WS_TYPE_TEXT) {

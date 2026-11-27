@@ -1,3 +1,4 @@
+#include "esp_wifi.h"
 #include "bluetooth_manager.h"
 #include "config.h"
 #include "console/console.h"
@@ -43,6 +44,11 @@ void bluetooth_manager_init(void) {
     esp_err_t err;
 
     _ble_connect_sem = xSemaphoreCreateBinary();
+
+    // Wi-Fi/BT coexistence requires Wi-Fi modem sleep. The Wi-Fi manager disables power save
+    // when Bluetooth is off, so re-enable it before the BT controller starts (no-op/err if
+    // Wi-Fi is not initialized).
+    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
 
     esp_nimble_hci_and_controller_init();
     nimble_port_init();
