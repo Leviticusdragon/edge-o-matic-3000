@@ -62,7 +62,7 @@ static void on_open(const ui_menu_t* m, UI_MENU_ARG_TYPE arg) {
 #ifdef EOM_BETA
     ui_menu_add_menu(m, &USER_PROFILES_MENU);
 #endif
-    ui_menu_add_menu(m, &PLUGIN_SETTINGS_MENU);
+    // Plugin settings menu removed: plugin system compiled out in this build.
     ui_menu_add_menu(m, &NETWORKING_MENU);
     ui_menu_add_menu(m, &UPDATE_MENU);
     ui_menu_add_item(m, _("System Info"), on_info, NULL);

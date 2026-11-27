@@ -53,14 +53,6 @@ jobs:
           path: .pio/build/eom3k/firmware.bin
           if-no-files-found: error
 
-      - name: Upload plugin API artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: plugin-api
-          path: |
-            .pio/build/eom3k/plugin-api.json
-            .pio/build/eom3k/plugin-api.sha256
-          if-no-files-found: error
 
   test:
     runs-on: ubuntu-latest

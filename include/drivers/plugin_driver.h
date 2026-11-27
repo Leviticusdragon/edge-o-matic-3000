@@ -9,7 +9,6 @@ extern "C" {
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "host/ble_hs.h"
-#include "mt_actions.h"
 #include <stdbool.h>
 
 /**

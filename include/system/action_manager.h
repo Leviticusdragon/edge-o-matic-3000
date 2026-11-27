@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "mt_actions.h"
+#include <stdbool.h>
 #include <stddef.h>
 
 void action_manager_init(void);
@@ -14,19 +14,9 @@ void action_manager_load_all_plugins(void);
 void action_manager_dispatch_event(const char* event, int val);
 
 size_t action_manager_get_plugin_count(void);
-mta_plugin_t* action_manager_get_plugin(size_t index);
-mta_plugin_t* action_manager_find_plugin(const char* name);
 
-/**
- * @brief Save plugin config to disk
- *
- * Serializes plugin config and writes to /plugincfg/<name>.json
- *
- * @param plugin Plugin instance
- * @param user_data Opaque pointer that can be assigned during the callback registration.
- * @return true if saved successfully, false otherwise
- */
-bool action_manager_save_plugin_config(mta_plugin_t* plugin, void* user_data);
+// NOTE: The WASM action-plugin system is compiled out of this build (the mt-actions
+// library it depends on is private). See src/system/no_plugins.c.
 
 #ifdef __cplusplus
 }
